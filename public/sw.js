@@ -1,4 +1,4 @@
-const CACHE_NAME = 'echoscribe-v1';
+const CACHE_NAME = 'echoscribe-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -69,5 +69,22 @@ self.addEventListener('fetch', (event) => {
           }
         });
       })
+  );
+});
+
+// Widget Click Event — Focuses or opens the app window to the emergency page when widget is clicked
+self.addEventListener('widgetclick', (event) => {
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // If app window is already open, focus it and navigate to emergency route
+      for (const client of windowClients) {
+        if (client.url.startsWith(self.location.origin)) {
+          client.navigate('./index.html#/emergency');
+          return client.focus();
+        }
+      }
+      // Otherwise, open a new app window directly to emergency route
+      return self.clients.openWindow('./index.html#/emergency');
+    })
   );
 });
