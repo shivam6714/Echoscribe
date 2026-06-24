@@ -8,7 +8,19 @@ export const DirectCall = () => {
       const parsed = JSON.parse(storedContacts);
       const found = parsed.find(c => c.id === storedPrimaryId);
       if (found && found.phone) {
-        window.location.replace(`tel:${found.phone}`);
+        // Create an anchor with target="_blank" to bypass the PWA scope-exit prompt
+        const link = document.createElement('a');
+        link.href = `tel:${found.phone}`;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Wait a brief moment to let the dialer open, then redirect the app back to safety hub
+        setTimeout(() => {
+          window.location.replace('#/emergency');
+        }, 1000);
       } else {
         window.location.replace('#/emergency');
       }
