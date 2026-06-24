@@ -11,12 +11,34 @@ import {
   ShieldAlert, 
   TrendingUp, 
   Award,
-  BookOpen
+  BookOpen,
+  Phone,
+  UserPlus
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const Dashboard = () => {
   const { history, trainingProgress, rehabStats, achievements, demoLoaded, loadDemoData } = useApp();
+  const [primaryContact, setPrimaryContact] = React.useState(null);
+
+  React.useEffect(() => {
+    const loadPrimaryContact = () => {
+      const storedContacts = localStorage.getItem('emergencyContacts');
+      const storedPrimaryId = localStorage.getItem('primaryEmergencyContactId');
+      if (storedContacts && storedPrimaryId) {
+        const parsed = JSON.parse(storedContacts);
+        const found = parsed.find(c => c.id === storedPrimaryId);
+        setPrimaryContact(found || null);
+      } else {
+        setPrimaryContact(null);
+      }
+    };
+    loadPrimaryContact();
+    window.addEventListener('emergency-contacts-updated', loadPrimaryContact);
+    return () => {
+      window.removeEventListener('emergency-contacts-updated', loadPrimaryContact);
+    };
+  }, []);
 
   // Get last 3 transcriptions
   const recentHistory = history.slice(0, 3);
@@ -53,35 +75,135 @@ export const Dashboard = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
       
-      {/* 1. Welcome Card / Demo Alert */}
+      {/* 1. Welcome Card / Demo Alert & SOS Calling Widget */}
       <section style={{ 
-        backgroundColor: 'var(--bg-secondary)', 
-        borderRadius: 'var(--radius-lg)', 
-        padding: '2rem',
-        border: '1px solid var(--color-border)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '1.5rem'
-      }}>
-        <div>
-          <h1 style={{ fontSize: 'var(--font-3xl)', fontFamily: 'var(--font-display)', marginBottom: '0.5rem' }}>
-            Welcome back to EchoScribe
-          </h1>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-md)', maxWidth: '600px' }}>
-            Your speech model is trained and ready. Let's communicate clearly, practice exercises, or update your personalized dictionary.
-          </p>
+        display: 'grid',
+        gridTemplateColumns: '1fr',
+        gap: '1.5rem',
+        alignItems: 'stretch'
+      }} className="welcome-grid">
+        <div style={{ 
+          backgroundColor: 'var(--bg-secondary)', 
+          borderRadius: 'var(--radius-lg)', 
+          padding: '2rem',
+          border: '1px solid var(--color-border)',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          gap: '1rem',
+          flex: 1
+        }}>
+          <div>
+            <h1 style={{ fontSize: 'var(--font-3xl)', fontFamily: 'var(--font-display)', marginBottom: '0.5rem', lineHeight: '1.2' }}>
+              Welcome back to EchoScribe
+            </h1>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-md)', maxWidth: '600px', margin: 0 }}>
+              Your speech model is trained and ready. Let's communicate clearly, practice exercises, or update your personalized dictionary.
+            </p>
+          </div>
+          {!demoLoaded && (
+            <button 
+              className="btn btn-primary"
+              onClick={loadDemoData}
+              style={{ boxShadow: 'var(--shadow-md)', alignSelf: 'flex-start' }}
+            >
+              Load Demo Data
+            </button>
+          )}
         </div>
-        {!demoLoaded && (
-          <button 
-            className="btn btn-primary"
-            onClick={loadDemoData}
-            style={{ boxShadow: 'var(--shadow-md)' }}
-          >
-            Load Demo Data
-          </button>
-        )}
+
+        {/* SOS Speed Dial Widget (styled like a clock widget) */}
+        <div style={{
+          backgroundColor: 'var(--bg-card)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '1.5rem',
+          border: '1px solid var(--color-border)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center',
+          boxShadow: 'var(--shadow-md)',
+          position: 'relative',
+          minHeight: '180px'
+        }} className="sos-dashboard-widget">
+          {primaryContact ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '10px', textTransform: 'uppercase', fontWeight: 'bold', color: 'var(--color-text-muted)', letterSpacing: '0.5px' }}>
+                SOS Call Widget
+              </span>
+              
+              <button
+                onClick={() => {
+                  window.location.href = `tel:${primaryContact.phone}`;
+                }}
+                className="pulse-call"
+                style={{
+                  width: '90px',
+                  height: '90px',
+                  borderRadius: '50%',
+                  backgroundColor: '#DC2626',
+                  color: '#FFFFFF',
+                  border: '4px solid var(--bg-secondary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 15px rgba(220, 38, 38, 0.4)',
+                  transition: 'transform 0.1s ease',
+                  outline: 'none'
+                }}
+                title={`Call ${primaryContact.name}`}
+              >
+                <Phone size={36} />
+              </button>
+
+              <div style={{ marginTop: '4px' }}>
+                <div style={{ fontWeight: 'bold', fontSize: 'var(--font-md)', color: 'var(--color-text)', lineHeight: '1.2' }}>
+                  {primaryContact.name}
+                </div>
+                <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                  {primaryContact.relationship}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '10px', textTransform: 'uppercase', fontWeight: 'bold', color: 'var(--color-text-muted)', letterSpacing: '0.5px' }}>
+                SOS Call Widget
+              </span>
+
+              <Link
+                to="/emergency"
+                style={{
+                  width: '90px',
+                  height: '90px',
+                  borderRadius: '50%',
+                  backgroundColor: 'var(--bg-secondary)',
+                  color: 'var(--color-text-muted)',
+                  border: '3px dashed var(--color-border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  textDecoration: 'none',
+                  outline: 'none'
+                }}
+              >
+                <UserPlus size={32} />
+              </Link>
+
+              <div style={{ marginTop: '4px' }}>
+                <div style={{ fontWeight: 'bold', fontSize: 'var(--font-sm)', color: 'var(--color-text)' }}>
+                  No Primary Contact
+                </div>
+                <Link to="/emergency" style={{ fontSize: '11px', color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 'bold' }}>
+                  Set Up Now
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
       </section>
 
       {/* 2. Core Metrics Grid */}
@@ -219,6 +341,30 @@ export const Dashboard = () => {
         )}
       </section>
 
+      <style>{`
+        @media (min-width: 768px) {
+          .welcome-grid {
+            grid-template-columns: 2fr 1fr !important;
+          }
+        }
+        @keyframes pulse-sos-widget {
+          0% {
+            box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4), 0 4px 15px rgba(220, 38, 38, 0.3);
+          }
+          70% {
+            box-shadow: 0 0 0 10px rgba(220, 38, 38, 0), 0 4px 15px rgba(220, 38, 38, 0.3);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(220, 38, 38, 0), 0 4px 15px rgba(220, 38, 38, 0.3);
+          }
+        }
+        .pulse-call {
+          animation: pulse-sos-widget 2s infinite;
+        }
+        .pulse-call:active {
+          transform: scale(0.95);
+        }
+      `}</style>
     </div>
   );
 };

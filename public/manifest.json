@@ -37,5 +37,24 @@
         }
       ]
     }
+  ],
+  "widgets": [
+    {
+      "name": "EchoScribe SOS",
+      "short_name": "SOS Call",
+      "description": "One-tap widget to call your primary emergency contact.",
+      "tag": "sos-widget",
+      "template": "sos-widget",
+      "ms_ac_template": "widgets/sos.json",
+      "data": "widgets/sos-data.json",
+      "type": "application/json",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
   ]
 }
