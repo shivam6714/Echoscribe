@@ -1,4 +1,4 @@
-const CACHE_NAME = 'echoscribe-v2';
+const CACHE_NAME = 'echoscribe-v3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -72,19 +72,21 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Widget Click Event — Focuses or opens the app window to the emergency page when widget is clicked
+// Widget Click Event — Opens the phone dialer directly when widget is tapped
 self.addEventListener('widgetclick', (event) => {
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // If app window is already open, focus it and navigate to emergency route
-      for (const client of windowClients) {
-        if (client.url.startsWith(self.location.origin)) {
-          client.navigate('./index.html#/emergency');
-          return client.focus();
+    caches.open('echoscribe-contacts').then((cache) => {
+      return cache.match('/api/primary-phone').then((response) => {
+        if (response) {
+          return response.text().then((phone) => {
+            // Open the dialer directly via tel protocol
+            return self.clients.openWindow(`tel:${phone}`);
+          });
+        } else {
+          // Fallback if no contact is cached: open the app's emergency route
+          return self.clients.openWindow('./index.html#/emergency');
         }
-      }
-      // Otherwise, open a new app window directly to emergency route
-      return self.clients.openWindow('./index.html#/emergency');
+      });
     })
   );
 });

@@ -29,6 +29,13 @@ export const Dashboard = () => {
         const parsed = JSON.parse(storedContacts);
         const found = parsed.find(c => c.id === storedPrimaryId);
         setPrimaryContact(found || null);
+        if (found && found.phone) {
+          if ('caches' in window) {
+            caches.open('echoscribe-contacts').then((cache) => {
+              cache.put('/api/primary-phone', new Response(found.phone));
+            }).catch((err) => console.warn('Cache write failed:', err));
+          }
+        }
       } else {
         setPrimaryContact(null);
       }
