@@ -29,7 +29,7 @@
       "name": "Emergency",
       "short_name": "Emergency",
       "description": "Access emergency calling and contacts instantly",
-      "url": "/emergency",
+      "url": "index.html#/emergency",
       "icons": [
         {
           "src": "icon-192.png",
