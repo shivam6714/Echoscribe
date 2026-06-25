@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, Link, useLocation } from 'react-router-dom';
+import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { 
   Home, 
@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 
 export const Layout = ({ children }) => {
+  const navigate = useNavigate();
   const { 
     accessibilitySettings, 
     trainingProgress, 
@@ -474,7 +475,7 @@ export const Layout = ({ children }) => {
       <button
         onClick={() => {
           if (directDialerBypass && primaryContact && primaryContact.phone) {
-            window.location.href = `tel:${primaryContact.phone}`;
+            navigate('/direct-call');
           } else {
             setShowEmergencyModal(true);
           }

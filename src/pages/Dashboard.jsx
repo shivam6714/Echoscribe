@@ -162,7 +162,7 @@ export const Dashboard = () => {
               <button
                 onClick={() => {
                   if (directDialerBypass) {
-                    window.location.href = `tel:${primaryContact.phone}`;
+                    navigate('/direct-call');
                   } else {
                     navigate('/emergency');
                   }

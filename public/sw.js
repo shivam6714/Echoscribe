@@ -72,26 +72,18 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Widget Click Event — Opens the phone dialer directly when widget is tapped
+// Widget Click Event — Opens the app's direct call popup when widget is tapped
 self.addEventListener('widgetclick', (event) => {
   event.waitUntil(
     caches.open('echoscribe-contacts').then((cache) => {
-      return Promise.all([
-        cache.match('/api/primary-phone'),
-        cache.match('/api/direct-dial-bypass')
-      ]).then(([phoneResponse, bypassResponse]) => {
-        const getPhone = phoneResponse ? phoneResponse.text() : Promise.resolve(null);
-        const getBypass = bypassResponse ? bypassResponse.text() : Promise.resolve('false');
-        
-        return Promise.all([getPhone, getBypass]).then(([phone, bypass]) => {
-          if (phone && bypass === 'true') {
-            // Open the dialer directly via tel protocol
-            return self.clients.openWindow(`tel:${phone}`);
-          } else {
-            // Fallback if no contact is cached or bypass is false: open the app's emergency route
-            return self.clients.openWindow('./index.html#/emergency');
-          }
-        });
+      return cache.match('/api/primary-phone').then((response) => {
+        if (response) {
+          // Open the app's direct-call route to show the confirmation pop-up
+          return self.clients.openWindow('./index.html#/direct-call');
+        } else {
+          // Fallback if no contact is cached: open the app's emergency route
+          return self.clients.openWindow('./index.html#/emergency');
+        }
       });
     })
   );
