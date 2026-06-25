@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { Toggle } from '../components/Toggle';
 import {
   Phone,
   ShieldAlert,
@@ -55,6 +56,10 @@ export const Emergency = () => {
   const [countdown, setCountdown] = useState(5);
   const [alertSent, setAlertSent] = useState(false);
 
+  const [directDialerBypass, setDirectDialerBypass] = useState(() => {
+    return localStorage.getItem('echoscribe_direct_dial_bypass') === 'true';
+  });
+
   // Load contacts from LocalStorage on mount
   useEffect(() => {
     const storedContacts = localStorage.getItem('emergencyContacts');
@@ -83,6 +88,20 @@ export const Emergency = () => {
     }
     return () => clearTimeout(timer);
   }, [activeAlert, countdown, alertSent]);
+
+  // Sync settings with LocalStorage and Cache
+  useEffect(() => {
+    localStorage.setItem('echoscribe_direct_dial_bypass', String(directDialerBypass));
+    window.dispatchEvent(new Event('emergency-settings-updated'));
+    if ('caches' in window) {
+      caches.open('echoscribe-contacts').then((cache) => {
+        cache.put('/api/direct-dial-bypass', new Response(String(directDialerBypass)));
+        if (primaryContact && primaryContact.phone) {
+          cache.put('/api/primary-phone', new Response(primaryContact.phone));
+        }
+      }).catch((err) => console.warn('Cache write failed:', err));
+    }
+  }, [directDialerBypass, primaryContactId, contacts]);
 
   const speakText = (text) => {
     const synth = window.speechSynthesis;
@@ -559,6 +578,27 @@ export const Emergency = () => {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* EMERGENCY WIDGET SETTINGS */}
+          {primaryContact && (
+            <div className="card" style={{ padding: '1.5rem', backgroundColor: 'var(--bg-card)', border: '1px solid var(--color-border)' }}>
+              <h3 style={{ fontSize: 'var(--font-sm)', fontWeight: 'bold', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '0.35rem', margin: '0 0 0.5rem 0' }}>
+                <Settings size={16} style={{ color: 'var(--color-primary)' }} />
+                Emergency Widget Behavior
+              </h3>
+              <p style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)', lineHeight: '1.5', margin: '0 0 0.5rem 0' }}>
+                Configure the action when tapping on emergency widgets (such as the Floating SOS button or the Dashboard SOS widget).
+              </p>
+              
+              <Toggle 
+                id="direct-dial-toggle"
+                checked={directDialerBypass}
+                onChange={setDirectDialerBypass}
+                label="Direct Phone Dialer"
+                description="Bypass in-app confirmation screens and launch the device's native dialer directly with your primary contact."
+              />
             </div>
           )}
 

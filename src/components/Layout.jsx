@@ -35,6 +35,9 @@ export const Layout = ({ children }) => {
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [copiedSuccess, setCopiedSuccess] = useState(false);
   const [showEncouragement, setShowEncouragement] = useState(false);
+  const [directDialerBypass, setDirectDialerBypass] = useState(() => {
+    return localStorage.getItem('echoscribe_direct_dial_bypass') === 'true';
+  });
   const location = useLocation();
 
   useEffect(() => {
@@ -64,6 +67,7 @@ export const Layout = ({ children }) => {
   const loadPrimaryContact = () => {
     const storedContacts = localStorage.getItem('emergencyContacts');
     const storedPrimaryId = localStorage.getItem('primaryEmergencyContactId');
+    const bypassVal = localStorage.getItem('echoscribe_direct_dial_bypass') === 'true';
     if (storedContacts && storedPrimaryId) {
       const parsed = JSON.parse(storedContacts);
       const found = parsed.find(c => c.id === storedPrimaryId);
@@ -72,6 +76,7 @@ export const Layout = ({ children }) => {
         if ('caches' in window) {
           caches.open('echoscribe-contacts').then((cache) => {
             cache.put('/api/primary-phone', new Response(found.phone));
+            cache.put('/api/direct-dial-bypass', new Response(String(bypassVal)));
           }).catch((err) => console.warn('Cache write failed:', err));
         }
       }
@@ -85,8 +90,21 @@ export const Layout = ({ children }) => {
     
     // Listen for custom events dispatched when contacts update
     window.addEventListener('emergency-contacts-updated', loadPrimaryContact);
+    
+    const handleSettingsUpdate = () => {
+      const bypassVal = localStorage.getItem('echoscribe_direct_dial_bypass') === 'true';
+      setDirectDialerBypass(bypassVal);
+      if ('caches' in window) {
+        caches.open('echoscribe-contacts').then((cache) => {
+          cache.put('/api/direct-dial-bypass', new Response(String(bypassVal)));
+        }).catch((err) => console.warn('Cache write failed:', err));
+      }
+    };
+    window.addEventListener('emergency-settings-updated', handleSettingsUpdate);
+
     return () => {
       window.removeEventListener('emergency-contacts-updated', loadPrimaryContact);
+      window.removeEventListener('emergency-settings-updated', handleSettingsUpdate);
     };
   }, []);
 
@@ -454,7 +472,13 @@ export const Layout = ({ children }) => {
 
       {/* Floating Emergency SOS Button */}
       <button
-        onClick={() => setShowEmergencyModal(true)}
+        onClick={() => {
+          if (directDialerBypass && primaryContact && primaryContact.phone) {
+            window.location.href = `tel:${primaryContact.phone}`;
+          } else {
+            setShowEmergencyModal(true);
+          }
+        }}
         className="floating-sos-button"
         style={{
           position: 'fixed',

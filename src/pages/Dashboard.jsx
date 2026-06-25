@@ -15,16 +15,21 @@ import {
   Phone,
   UserPlus
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 export const Dashboard = () => {
+  const navigate = useNavigate();
   const { history, trainingProgress, rehabStats, achievements, demoLoaded, loadDemoData } = useApp();
   const [primaryContact, setPrimaryContact] = React.useState(null);
+  const [directDialerBypass, setDirectDialerBypass] = React.useState(() => {
+    return localStorage.getItem('echoscribe_direct_dial_bypass') === 'true';
+  });
 
   React.useEffect(() => {
     const loadPrimaryContact = () => {
       const storedContacts = localStorage.getItem('emergencyContacts');
       const storedPrimaryId = localStorage.getItem('primaryEmergencyContactId');
+      const bypassVal = localStorage.getItem('echoscribe_direct_dial_bypass') === 'true';
       if (storedContacts && storedPrimaryId) {
         const parsed = JSON.parse(storedContacts);
         const found = parsed.find(c => c.id === storedPrimaryId);
@@ -33,6 +38,7 @@ export const Dashboard = () => {
           if ('caches' in window) {
             caches.open('echoscribe-contacts').then((cache) => {
               cache.put('/api/primary-phone', new Response(found.phone));
+              cache.put('/api/direct-dial-bypass', new Response(String(bypassVal)));
             }).catch((err) => console.warn('Cache write failed:', err));
           }
         }
@@ -42,8 +48,21 @@ export const Dashboard = () => {
     };
     loadPrimaryContact();
     window.addEventListener('emergency-contacts-updated', loadPrimaryContact);
+
+    const handleSettingsUpdate = () => {
+      const bypassVal = localStorage.getItem('echoscribe_direct_dial_bypass') === 'true';
+      setDirectDialerBypass(bypassVal);
+      if ('caches' in window) {
+        caches.open('echoscribe-contacts').then((cache) => {
+          cache.put('/api/direct-dial-bypass', new Response(String(bypassVal)));
+        }).catch((err) => console.warn('Cache write failed:', err));
+      }
+    };
+    window.addEventListener('emergency-settings-updated', handleSettingsUpdate);
+
     return () => {
       window.removeEventListener('emergency-contacts-updated', loadPrimaryContact);
+      window.removeEventListener('emergency-settings-updated', handleSettingsUpdate);
     };
   }, []);
 
@@ -142,7 +161,11 @@ export const Dashboard = () => {
               
               <button
                 onClick={() => {
-                  window.location.href = `tel:${primaryContact.phone}`;
+                  if (directDialerBypass) {
+                    window.location.href = `tel:${primaryContact.phone}`;
+                  } else {
+                    navigate('/emergency');
+                  }
                 }}
                 className="pulse-call"
                 style={{
@@ -160,7 +183,7 @@ export const Dashboard = () => {
                   transition: 'transform 0.1s ease',
                   outline: 'none'
                 }}
-                title={`Call ${primaryContact.name}`}
+                title={directDialerBypass ? `Call ${primaryContact.name}` : 'Open Emergency Safety Hub'}
               >
                 <Phone size={36} />
               </button>
@@ -171,6 +194,9 @@ export const Dashboard = () => {
                 </div>
                 <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)', marginTop: '2px' }}>
                   {primaryContact.relationship}
+                </div>
+                <div style={{ fontSize: '10px', color: directDialerBypass ? '#DC2626' : 'var(--color-primary)', fontWeight: 'bold', marginTop: '4px' }}>
+                  {directDialerBypass ? '📞 Taps dial phone' : '🛡️ Taps open Safety Hub'}
                 </div>
               </div>
             </div>
