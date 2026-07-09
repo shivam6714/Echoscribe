@@ -59,3 +59,4 @@ EchoScribe operates strictly under a "Privacy First" policy. All user data, metr
 | **Local Storage** | Settings, contact lists, custom word maps, streaks, progress metrics, and achievements. | Persistent config storage across page refreshes and offline sessions. |
 | **Cache Storage API** | `/api/primary-phone`, `/api/direct-dial-bypass` | Service Worker read/write cache to handle PWA desktop/mobile widget taps offline. |
 | **Service Worker (`sw.js`)** | Static PWA assets (`/index.html`, `/manifest.json`, icons) | Facilitates instant, offline-first network loading and background widget interactions. |
+
