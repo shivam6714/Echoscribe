@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
+import { generateUserTimeframeData } from '../services/speechEngine';
 import { MetricCard } from '../components/MetricCard';
 import { ActionCard } from '../components/ActionCard';
 import { ChartMock } from '../components/ChartMock';
@@ -19,7 +20,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 export const Dashboard = () => {
   const navigate = useNavigate();
-  const { history, trainingProgress, rehabStats, achievements, demoLoaded, loadDemoData } = useApp();
+  const { history, trainingProgress, rehabStats, achievements } = useApp();
   const [primaryContact, setPrimaryContact] = React.useState(null);
   const [directDialerBypass, setDirectDialerBypass] = React.useState(() => {
     return localStorage.getItem('echoscribe_direct_dial_bypass') === 'true';
@@ -76,7 +77,7 @@ export const Dashboard = () => {
   const totalLogs = history.length;
   const avgConfidence = totalLogs > 0 
     ? Math.round(history.reduce((acc, curr) => acc + (curr.confidence || 0), 0) / totalLogs)
-    : 85; // Fallback default communication score
+    : (rehabStats.clarityScore || 0);
 
   // Last live session info
   const lastSessionItem = history[0];
@@ -87,21 +88,14 @@ export const Dashboard = () => {
     ? `Last speech: "${lastSessionItem.corrected}"`
     : 'Start a Live Mode session to begin.';
 
-  // Chart data for weekly improvements
-  const weeklyImprovementData = [
-    { label: 'Mon', value: 65 },
-    { label: 'Tue', value: 68 },
-    { label: 'Wed', value: 72 },
-    { label: 'Thu', value: 74 },
-    { label: 'Fri', value: 79 },
-    { label: 'Sat', value: 83 },
-    { label: 'Sun', value: rehabStats.clarityScore }
-  ];
+  // Dynamic Chart data for weekly improvements
+  const timeframeData = generateUserTimeframeData(history, rehabStats, 'weekly');
+  const weeklyImprovementData = timeframeData.accuracy;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
       
-      {/* 1. Welcome Card / Demo Alert & SOS Calling Widget */}
+      {/* 1. Welcome Card / SOS Calling Widget */}
       <section style={{ 
         display: 'grid',
         gridTemplateColumns: '1fr',
@@ -124,18 +118,9 @@ export const Dashboard = () => {
               Welcome back to EchoScribe
             </h1>
             <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-md)', maxWidth: '600px', margin: 0 }}>
-              Your speech model is trained and ready. Let's communicate clearly, practice exercises, or update your personalized dictionary.
+              Your speech model is ready. Practice rehab drills, train custom command shortcuts, or view real-time speech analytics.
             </p>
           </div>
-          {!demoLoaded && (
-            <button 
-              className="btn btn-primary"
-              onClick={loadDemoData}
-              style={{ boxShadow: 'var(--shadow-md)', alignSelf: 'flex-start' }}
-            >
-              Load Demo Data
-            </button>
-          )}
         </div>
 
         {/* SOS Speed Dial Widget (styled like a clock widget) */}

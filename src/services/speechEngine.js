@@ -39,17 +39,14 @@ export function calculateLevenshtein(a, b) {
 
   const matrix = [];
 
-  // Increment along the first column of each row
   for (let i = 0; i <= b.length; i++) {
     matrix[i] = [i];
   }
 
-  // Increment each column in the first row
   for (let j = 0; j <= a.length; j++) {
     matrix[0][j] = j;
   }
 
-  // Fill in the rest of the matrix
   for (let i = 1; i <= b.length; i++) {
     for (let j = 1; j <= a.length; j++) {
       if (b.charAt(i - 1) === a.charAt(j - 1)) {
@@ -67,15 +64,12 @@ export function calculateLevenshtein(a, b) {
   return matrix[b.length][a.length];
 }
 
-// Strip vowels for phonetic-like consonant comparison
 function stripVowels(str) {
   return str.toLowerCase().replace(/[aeiou\s]/g, '');
 }
 
 /**
- * Cleans stuttering from raw input (e.g. "H-h-h-hello" -> "Hello", "w-w-water" -> "water")
- * @param {string} input - The raw input text
- * @returns {string} Cleaned text
+ * Cleans stuttering from raw input
  */
 export function cleanStutter(input) {
   if (!input || typeof input !== 'string') return "";
@@ -107,24 +101,18 @@ export function cleanStutter(input) {
 
 /**
  * Predicts the corrected version of the input phrase
- * @param {string} input - The raw non-standard speech text
- * @param {Object} customDictionary - User-defined mappings from LocalStorage
- * @returns {Object} { original, corrected, confidence, method }
  */
 export function predictCorrection(input, customDictionary = {}) {
   if (!input || typeof input !== 'string') {
     return { original: '', corrected: '', confidence: 0, method: 'none' };
   }
 
-  // 1. Clean stuttering first
   const stutterCleaned = cleanStutter(input);
   const cleanInput = stutterCleaned.trim().toLowerCase();
   const hadStutter = stutterCleaned.toLowerCase().trim() !== input.toLowerCase().trim();
 
-  // Merge default and custom dictionary (custom takes precedence)
   const fullDictionary = { ...DEFAULT_DICTIONARY, ...customDictionary };
 
-  // 2. Direct exact match on cleaned input
   if (fullDictionary[cleanInput]) {
     return {
       original: input,
@@ -134,7 +122,6 @@ export function predictCorrection(input, customDictionary = {}) {
     };
   }
 
-  // 3. Phonetic/Consonant Match on cleaned input (e.g. "hlpm" matches "help me")
   const inputConsonants = stripVowels(cleanInput);
   for (const [key, value] of Object.entries(fullDictionary)) {
     const keyConsonants = stripVowels(key);
@@ -148,7 +135,6 @@ export function predictCorrection(input, customDictionary = {}) {
     }
   }
 
-  // 4. Fuzzy Levenshtein Match on cleaned input
   let bestMatchKey = null;
   let minDistance = Infinity;
 
@@ -160,11 +146,9 @@ export function predictCorrection(input, customDictionary = {}) {
     }
   }
 
-  // Calculate similarity ratio
   const maxLen = Math.max(cleanInput.length, bestMatchKey ? bestMatchKey.length : 1);
   const similarity = 1 - minDistance / maxLen;
 
-  // We only accept fuzzy match if similarity is reasonably high (e.g. > 0.45)
   if (bestMatchKey && similarity > 0.45) {
     const confidence = Math.round(similarity * 100);
     return {
@@ -175,8 +159,6 @@ export function predictCorrection(input, customDictionary = {}) {
     };
   }
 
-  // 5. Default Fallback
-  // If we detected a stutter and cleaned it, we return the cleaned text with high confidence!
   if (hadStutter) {
     const fallbackText = stutterCleaned.charAt(0).toUpperCase() + stutterCleaned.slice(1);
     return {
@@ -187,7 +169,6 @@ export function predictCorrection(input, customDictionary = {}) {
     };
   }
 
-  // No stutter and no dictionary match
   const fallbackText = input.charAt(0).toUpperCase() + input.slice(1);
   return {
     original: input,
@@ -199,9 +180,6 @@ export function predictCorrection(input, customDictionary = {}) {
 
 /**
  * Simulates model training on a new speech sample
- * @param {string} phrase - The input speech pattern (e.g., "ggl")
- * @param {string} correction - The intended word (e.g., "Google")
- * @returns {Promise<Object>} Resolves with training feedback
  */
 export function trainModel(phrase, correction) {
   return new Promise((resolve) => {
@@ -209,7 +187,6 @@ export function trainModel(phrase, correction) {
       const cleanPhrase = phrase.trim().toLowerCase();
       const cleanCorrection = correction.trim();
       
-      // Calculate training quality
       const levDistance = calculateLevenshtein(cleanPhrase, cleanCorrection);
       const complexityScore = Math.min(100, Math.round((cleanPhrase.length / 3) * 30));
       
@@ -221,28 +198,40 @@ export function trainModel(phrase, correction) {
         complexity: complexityScore,
         timestamp: new Date().toISOString()
       });
-    }, 1000); // Simulate network/processing delay
+    }, 1000);
   });
 }
 
 /**
- * Generates speech pattern insights from history
- * @param {Array} history - Session history array
- * @returns {Object} An statistics report
+ * Generates speech pattern insights strictly from user's actual activity and history.
  */
-export function generateInsights(history = []) {
-  if (history.length === 0) {
+export function generateInsights(history = [], trainingProgress = {}, rehabStats = {}) {
+  const readinessScore = trainingProgress.readinessScore || 0;
+  const clarityScore = rehabStats.clarityScore || 0;
+  const streak = rehabStats.streak || 0;
+  const completedCount = trainingProgress.completedPhrases ? trainingProgress.completedPhrases.length : 0;
+  const targetPhrases = 12;
+  const phrasesLeft = Math.max(0, targetPhrases - completedCount);
+
+  if (history.length === 0 && (rehabStats.exercisesCompleted || 0) === 0) {
     return {
       totalTranscriptions: 0,
       averageConfidence: 0,
       commonCorrections: [],
       successRate: 0,
-      improvementScore: 50
+      improvementScore: 0,
+      insightsList: [
+        { type: 'primary', text: 'No live transcription sessions recorded yet. Perform live translations to start generating real-time analytics.' },
+        { type: 'accent', text: `Training progress: ${completedCount} of ${targetPhrases} target phrases completed (${readinessScore}% readiness).` },
+        { type: 'warning', text: streak > 0 ? `Current practice streak: ${streak} day(s).` : 'Complete rehabilitation exercises to establish a practice streak.' }
+      ]
     };
   }
 
   const total = history.length;
-  const avgConf = Math.round(history.reduce((sum, h) => sum + (h.confidence || 0), 0) / total);
+  const avgConf = total > 0 
+    ? Math.round(history.reduce((sum, h) => sum + (h.confidence || 0), 0) / total)
+    : clarityScore;
   
   // Find common corrections
   const frequencyMap = {};
@@ -257,28 +246,162 @@ export function generateInsights(history = []) {
     .slice(0, 3)
     .map(([phrase, count]) => ({ phrase, count }));
 
-  // Success rate: percentage of transcriptions with confidence >= 70% or accepted by user
-  const successCount = history.filter(h => h.confidence >= 70 || h.saved).length;
-  const successRate = Math.round((successCount / total) * 100);
+  const successCount = history.filter(h => (h.confidence || 0) >= 70 || h.saved).length;
+  const successRate = total > 0 ? Math.round((successCount / total) * 100) : (clarityScore > 0 ? clarityScore : 0);
 
-  // Improvement Score: derived from training progress & confidence over time
-  // If later items have higher confidence, improvement is higher
   const firstHalf = history.slice(0, Math.ceil(total / 2));
   const secondHalf = history.slice(Math.ceil(total / 2));
   
-  let improvementScore = 65; // base
+  let improvementScore = avgConf > 0 ? avgConf : clarityScore;
   if (firstHalf.length && secondHalf.length) {
-    const avgFirst = firstHalf.reduce((sum, h) => sum + h.confidence, 0) / firstHalf.length;
-    const avgSecond = secondHalf.reduce((sum, h) => sum + h.confidence, 0) / secondHalf.length;
+    const avgFirst = firstHalf.reduce((sum, h) => sum + (h.confidence || 0), 0) / firstHalf.length;
+    const avgSecond = secondHalf.reduce((sum, h) => sum + (h.confidence || 0), 0) / secondHalf.length;
     const diff = avgSecond - avgFirst;
-    improvementScore = Math.max(50, Math.min(99, Math.round(65 + diff * 2)));
+    improvementScore = Math.max(0, Math.min(100, Math.round(improvementScore + diff * 1.5)));
   }
+
+  const mostUsedPhrase = commonCorrections[0] ? commonCorrections[0].phrase : null;
+
+  const insightsList = [
+    {
+      type: 'accent',
+      text: mostUsedPhrase 
+        ? `Speech clarity reached ${clarityScore}% with frequent usage of "${mostUsedPhrase}".`
+        : clarityScore > 0 ? `Speech clarity score is currently at ${clarityScore}%.` : 'Complete daily exercises to compute clarity score.'
+    },
+    {
+      type: 'primary',
+      text: total > 0 
+        ? `Adaptive matching resolved ${successRate}% of speech translations accurately.`
+        : 'Start live speech sessions to profile translation accuracy.'
+    },
+    {
+      type: 'warning',
+      text: phrasesLeft > 0
+        ? `Model readiness is at ${readinessScore}%. Train ${phrasesLeft} more command(s) to maximize accuracy.`
+        : `All ${targetPhrases} target voice templates trained.`
+    }
+  ];
 
   return {
     totalTranscriptions: total,
     averageConfidence: avgConf,
     commonCorrections,
     successRate,
-    improvementScore
+    improvementScore,
+    insightsList
   };
+}
+
+/**
+ * Generates dynamic time-series datasets strictly from actual user history and rehab logs.
+ */
+export function generateUserTimeframeData(history = [], rehabStats = {}, timeframe = 'weekly') {
+  if (timeframe === 'daily') {
+    const hours = ['9 AM', '12 PM', '3 PM', '6 PM', '9 PM'];
+    const counts = [0, 0, 0, 0, 0];
+    const accSums = [0, 0, 0, 0, 0];
+    const accCounts = [0, 0, 0, 0, 0];
+
+    history.forEach(item => {
+      if (item.timestamp) {
+        const date = new Date(item.timestamp);
+        const hour = date.getHours();
+        let idx = 0;
+        if (hour < 11) idx = 0;
+        else if (hour < 14) idx = 1;
+        else if (hour < 17) idx = 2;
+        else if (hour < 20) idx = 3;
+        else idx = 4;
+
+        counts[idx] += 1;
+        accSums[idx] += (item.confidence || 0);
+        accCounts[idx] += 1;
+      }
+    });
+
+    const activity = hours.map((label, i) => ({
+      label,
+      value: counts[i]
+    }));
+
+    const accuracy = hours.map((label, i) => ({
+      label,
+      value: accCounts[i] > 0 ? Math.round(accSums[i] / accCounts[i]) : 0
+    }));
+
+    return { activity, accuracy };
+  }
+
+  if (timeframe === 'monthly') {
+    const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+    const now = Date.now();
+    const weekMs = 7 * 24 * 3600 * 1000;
+
+    const counts = [0, 0, 0, 0];
+    const accSums = [0, 0, 0, 0];
+    const accCounts = [0, 0, 0, 0];
+
+    history.forEach(item => {
+      if (item.timestamp) {
+        const diffMs = now - new Date(item.timestamp).getTime();
+        const weekIndex = Math.min(3, Math.max(0, 3 - Math.floor(diffMs / weekMs)));
+        counts[weekIndex] += 1;
+        accSums[weekIndex] += (item.confidence || 0);
+        accCounts[weekIndex] += 1;
+      }
+    });
+
+    const activity = weeks.map((label, i) => ({
+      label,
+      value: counts[i]
+    }));
+
+    const accuracy = weeks.map((label, i) => ({
+      label,
+      value: accCounts[i] > 0 ? Math.round(accSums[i] / accCounts[i]) : 0
+    }));
+
+    return { activity, accuracy };
+  }
+
+  // Default: 'weekly'
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const dayCounts = [0, 0, 0, 0, 0, 0, 0];
+  const dayAccSums = [0, 0, 0, 0, 0, 0, 0];
+  const dayAccCounts = [0, 0, 0, 0, 0, 0, 0];
+
+  history.forEach(item => {
+    if (item.timestamp) {
+      const d = new Date(item.timestamp).getDay();
+      const dayIdx = d === 0 ? 6 : d - 1;
+      dayCounts[dayIdx] += 1;
+      dayAccSums[dayIdx] += (item.confidence || 0);
+      dayAccCounts[dayIdx] += 1;
+    }
+  });
+
+  if (rehabStats.history && Array.isArray(rehabStats.history)) {
+    rehabStats.history.forEach(entry => {
+      if (entry.date) {
+        const d = new Date(entry.date).getDay();
+        const dayIdx = d === 0 ? 6 : d - 1;
+        dayCounts[dayIdx] += 1;
+        dayAccSums[dayIdx] += entry.score;
+        dayAccCounts[dayIdx] += 1;
+      }
+    });
+  }
+
+  const activity = days.map((label, i) => ({
+    label,
+    value: dayCounts[i]
+  }));
+
+  const accuracy = days.map((label, i) => ({
+    label,
+    value: dayAccCounts[i] > 0 ? Math.round(dayAccSums[i] / dayAccCounts[i]) : 0
+  }));
+
+  return { activity, accuracy };
 }

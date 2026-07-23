@@ -343,7 +343,7 @@ export const Rehabilitation = () => {
             </div>
           ) : (
             <div>
-              <ChartMock type="bar" data={historyChartData.length > 0 ? historyChartData : [{label: 'Day 1', value: 70}]} height={140} />
+              <ChartMock type="bar" data={historyChartData} height={140} />
               
               <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <span style={{ fontSize: 'var(--font-xs)', fontWeight: 'bold', color: 'var(--color-text-muted)' }}>

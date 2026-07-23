@@ -26,8 +26,6 @@ export const Layout = ({ children }) => {
   const { 
     accessibilitySettings, 
     trainingProgress, 
-    loadDemoData, 
-    demoLoaded,
     isInstallable,
     triggerInstall
   } = useApp();
@@ -36,6 +34,7 @@ export const Layout = ({ children }) => {
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [copiedSuccess, setCopiedSuccess] = useState(false);
   const [showEncouragement, setShowEncouragement] = useState(false);
+
   const [directDialerBypass, setDirectDialerBypass] = useState(() => {
     return localStorage.getItem('echoscribe_direct_dial_bypass') === 'true';
   });
@@ -309,18 +308,6 @@ export const Layout = ({ children }) => {
               >
                 <Download size={14} />
                 Install EchoScribe
-              </button>
-            )}
-
-            {/* Demo Button */}
-            {!demoLoaded && (
-              <button 
-                onClick={loadDemoData}
-                className="btn btn-secondary flex align-center justify-center gap-2"
-                style={{ width: '100%', fontSize: 'var(--font-xs)', padding: '0.5rem 1rem', borderStyle: 'dashed', borderColor: 'var(--color-primary)' }}
-              >
-                <Database size={14} />
-                Load Demo Data
               </button>
             )}
 
